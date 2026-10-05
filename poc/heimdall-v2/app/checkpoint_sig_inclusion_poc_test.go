@@ -13,10 +13,9 @@ import (
 	"github.com/0xPolygon/heimdall-v2/helper"
 )
 
-// PreBlocker persists every commit vote whose non-RP extension bytes match the
-// majority extension. The recovery byte is not inspected, so a signature that
-// consensus accepts and the bridge cannot submit is written into checkpoint
-// signature state.
+// getCheckpointSignatures copies every commit vote whose non-RP extension
+// matches the majority bytes. The recovery byte is stored as received. This
+// does not show that the checkpoint cannot be submitted without that vote.
 func TestPoisonedRecoveryByteIsPersistedWithTheMajorityExtension(t *testing.T) {
 	orig := helper.GetZurichHardforkHeight()
 	helper.SetZurichHardforkHeight(1)

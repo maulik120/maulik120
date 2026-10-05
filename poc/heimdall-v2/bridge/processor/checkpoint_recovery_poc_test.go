@@ -14,9 +14,10 @@ import (
 
 // A validator signs the honest checkpoint side-sign bytes. CometBFT
 // VerifySignature checks only r||s and ignores the recovery byte, so the
-// validator can substitute any V and still pass consensus. The bridge then
-// either refuses to build the submission (V outside {0,1,27,28}) or submits a
-// signature that ecrecovers to a different address (V flipped within {0,1}).
+// validator can substitute any V and still pass that check. The stock bridge
+// parser then rejects the whole batch when V is outside {0,1,27,28}. Dropping
+// that one signature makes the same parser succeed. This does not show that
+// L1 submitCheckpoint is unreachable.
 func TestCraftedRecoveryBytePassesConsensusAndBreaksCheckpointSubmission(t *testing.T) {
 	priv := secp256k1.GenPrivKey()
 	pub := priv.PubKey()
@@ -50,6 +51,13 @@ func TestCraftedRecoveryBytePassesConsensusAndBreaksCheckpointSubmission(t *test
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid signature recovery id 2")
 
+	// The same honest signatures parse once the disallowed byte is omitted.
+	_, err = cp.parseCheckpointSignatures([]checkpointtypes.CheckpointSignature{
+		{ValidatorAddress: []byte{0x01}, Signature: honestA},
+		{ValidatorAddress: []byte{0x03}, Signature: honestB},
+	})
+	require.NoError(t, err)
+
 	// --- Attack B: flip 0 <-> 1. Parse succeeds, ecrecover returns someone else. ---
 	flipped := bytes.Clone(sig)
 	flipped[crypto.RecoveryIDOffset] = originalV ^ 1
@@ -70,7 +78,7 @@ func TestCraftedRecoveryBytePassesConsensusAndBreaksCheckpointSubmission(t *test
 	recoveredAddr := crypto.PubkeyToAddress(*recovered)
 	signerAddr := crypto.PubkeyToAddress(*pubToECDSA(t, pub.(secp256k1.PubKey)))
 	require.NotEqual(t, signerAddr, recoveredAddr,
-		"wrong recovery id recovers a different address, so L1 checkSignatures drops or aborts the sorted signer run")
+		"wrong recovery id recovers a different address")
 
 	honestRecovered, err := crypto.SigToPub(hash, sig)
 	require.NoError(t, err)
