@@ -72,3 +72,12 @@ A hand-written keeper with span end behind the milestone would hang the function
 - Milestone `>= total*2/3+1` and side-tx `> total*2/3` are the same integer threshold. Tally and ProcessProposal use `getValidatorSetForHeight` (penultimate set after the tally-fix height).
 - Nested `Any` is already capped (`MaxUnpackAnyRecursionDepth = 10`, plus the Kyoto proposal guard).
 - `ValidateVotingPower` divides a `BigInt()` copy. A real stake event cannot exceed `MaxInt64` POL. The `Int64` conversion does not wrap a live amount into extra power.
+
+## Fourth pass — external hunter stack, applied locally
+
+The Medium list is a catalog of skills, MCP servers, and repos (Burp, Shodan, sqlmap, Metasploit, garak, Trail of Bits skills, amqp/CVE watchers). Live scanners and jailbreak repos were not run. The parts that map onto this source tree were.
+
+- Two side txs with the same sequence can both receive `VOTE_YES`. ExtendVote runs before either post-handler writes. `PreBlocker` runs the post-handlers in order, each in its own cache. The first `msCache.Write()` lands before the second handler reads. The second returns "already processed" and that error is logged, not returned (`app/abci.go` post-handler loop). No second mint, no halt.
+- Two checkpoint messages with the same start can both be voted yes while the buffer is empty. The first to run fills the buffer. The second errors and is discarded. Ordering only chooses among roots that already passed `IsValidCheckpoint`. It does not install an unchecked root.
+- `github.com/rabbitmq/amqp091-go v1.10.0` is below 1.13.0 (CVE-2026-79921 / CVE-2026-77410). Both require a malicious AMQP broker to exhaust the bridge process. The bridge dials the operator's own broker (`bridge/queue/connector.go`). That is an unmodified upstream client bug, not a permissionless Heimdall transition. The TLS-minimum advisory (GHSA-33mj-cw25-m34h) is inert on Go 1.26. Not filed.
+- No private keys or live API tokens in the v0.12.1 tree.

@@ -75,3 +75,7 @@ A separate hunt, not a variant of the recovery byte, is in `attack-meta.md`. No 
 ## Third pass
 
 Chained the lows that were still open. Nothing paid. The closest primitive is the `uint64` loop in `checkAndRotateCurrentSpan`: if a committed milestone end is already past the last span end, PreBlocker does not return. That precondition is not reachable. Span extension retries every milestone, the validator set drops a zero-power producer on the next `EndBlocker`, and backfill/span messages cannot insert a shorter span after Rio. Signer update does not double power. The account root cannot be inflated. Topup cannot retarget the mint. Details and the invariants are in `attack-meta.md`. Do not send.
+
+## Fourth pass
+
+Applied the source-audit half of the public hunter-stack list on `v0.12.1`. Duplicate side txs that both vote yes do not double-mint and do not halt PreBlocker: the second post-handler sees the first write and its error is swallowed. `amqp091-go v1.10.0` matches CVE-2026-79921 and CVE-2026-77410, which need a malicious broker the operator already trusts. Unmodified upstream. Not filed. Live scanners and jailbreak repos from that list were not run.
