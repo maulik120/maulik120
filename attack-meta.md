@@ -53,7 +53,7 @@ I8. Recovery byte outside allow-list cannot freeze L1 (omit works).
 
 ## Primitives (chainable)
 
-- P1: `rootCache`/`existsCache` 10s wall TTL in `IsValidCheckpoint` (also ProcessProposal path).  
+- P1: `rootCache`/`existsCache` 10s wall TTL in `IsValidCheckpoint` (also ProcessProposal path). **Proven:** `poc/.../root_cache_stale_poc_test.go` (green). Chain target = ProcessProposal ACCEPT/REJECT split under divergent Bor RPC.  
 - P2: `AppendBytes32` silent skip on `len>32`.  
 - P3: `GetConfirmedTxReceipt` finalizedHeaderCache (per-process).  
 - P4: Ithaca pending-stall >1/3 residual under honest fragmentation (documented).

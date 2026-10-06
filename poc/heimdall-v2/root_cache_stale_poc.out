@@ -1,0 +1,4 @@
+=== RUN   TestIsValidCheckpoint_RootCacheServesStaleRootWithoutRequery
+--- PASS: TestIsValidCheckpoint_RootCacheServesStaleRootWithoutRequery (0.00s)
+PASS
+ok  	github.com/0xPolygon/heimdall-v2/x/checkpoint/types	0.035s

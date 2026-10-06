@@ -28,7 +28,7 @@ Prior claim (recovery-byte freeze) remains **killed** — see branch `cursor/hei
 
 ## Primitives noted (not findings alone)
 
-- `IsValidCheckpoint` process-local 10s TTL cache (`x/checkpoint/types/merkle.go`) on a path also reached from `ProcessProposal` / `VerifyVoteExtension`. Safe while Bor roots are stable; under divergent RPC answers validators can disagree. Needs a halt PoC under realistic confirmations — not filed.  
+- `IsValidCheckpoint` process-local 10s TTL cache (`x/checkpoint/types/merkle.go`) on a path also reached from `ProcessProposal` / `VerifyVoteExtension`. **PoC green:** `poc/heimdall-v2/x/checkpoint/types/root_cache_stale_poc_test.go` — first Bor root is served without requery; a later live root for the same key is rejected while the cache is hot. Still not High: turning this into a network ACCEPT/REJECT split needs honest validators' Bor endpoints to disagree inside the TTL (RPC poison / unsafe confirmations).  
 - `AppendBytes32` silently skips fields `>32` bytes (`types/dividend_account.go`). Checkpoint `RootHash`/`AccountRootHash` length-gated elsewhere; residual defense-in-depth only.  
 - Ithaca pending-stall: documented `>1/3` residual under honest vote fragmentation — accepted trust model, not a new bypass.  
 - `GetConfirmedTxReceipt` prefers finalized API; `receipt.Status` not checked (standard EVM: failed txs emit no logs).
