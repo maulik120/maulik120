@@ -67,3 +67,7 @@ go test -count=1 -timeout 180s \
 ## Severity
 
 Not High. Not Medium. No reportable impact under the program's temporary-freeze category. Do not send.
+
+## Second pass
+
+A separate hunt, not a variant of the recovery byte, is in `attack-meta.md`. No chain reached a fake checkpoint root, a forged state sync, a stolen validator key, or a committed halt. The assumptions that held are listed there. Nothing new to send.
