@@ -81,3 +81,14 @@ The Medium list is a catalog of skills, MCP servers, and repos (Burp, Shodan, sq
 - Two checkpoint messages with the same start can both be voted yes while the buffer is empty. The first to run fills the buffer. The second errors and is discarded. Ordering only chooses among roots that already passed `IsValidCheckpoint`. It does not install an unchecked root.
 - `github.com/rabbitmq/amqp091-go v1.10.0` is below 1.13.0 (CVE-2026-79921 / CVE-2026-77410). Both require a malicious AMQP broker to exhaust the bridge process. The bridge dials the operator's own broker (`bridge/queue/connector.go`). That is an unmodified upstream client bug, not a permissionless Heimdall transition. The TLS-minimum advisory (GHSA-33mj-cw25-m34h) is inert on Go 1.26. Not filed.
 - No private keys or live API tokens in the v0.12.1 tree.
+
+## Fifth pass — skill-vault bug classes
+
+`skillvault.md` points at `shuvonsec/claude-bug-bounty`. Web2 recon (subfinder, nuclei, sqlmap, ffuf) was not run. The web3 ten classes and the sibling-function rule were applied to `v0.12.1`.
+
+- Accounting desync. Signer update keeps the old signer at power 0 and the new signer at the original power. `GetUpdatedValidators` removes one and adds the other. Stake is not doubled. Dividends have no decrease path, so a checkpoint account root cannot be inflated.
+- Sibling checks. `MsgCheckpoint` in the msg server re-checks the account root, the proposer, and buffer expiry at deliver time. `PostHandleMsgCheckpoint` does not. A yes vote still buffers the checkpoint if deliver rejected it, because `PreBlocker` keys off the vote, not the deliver code. The buffered root is the one signed at ExtendVote. Dividends only grow, so that root is a smaller snapshot. It is not an extra L1 claim, and the Bor root still had to pass `IsValidCheckpoint`.
+- Incomplete path. Topup mints, then stores the sequence. A later error returns from the post-handler, and `PreBlocker` does not call `msCache.Write()`. The mint is discarded with the cache.
+- Off-by-one. Side-tx `> total*2/3` and milestone `>= total*2/3+1` are the same integer test. `IsCurrentValidator` treats `EndEpoch == currentEpoch` as already out.
+- No vault share price, no spot oracle, no `template.HTML` / `template.JS` / `template.URL`. Checkpoint side-sign bytes include proposer, range, both roots, and chain id. Replay of those bytes is the same checkpoint.
+- ABCI post-handlers are single-threaded. There is no cross-function reentrancy between the vote and the cache write.

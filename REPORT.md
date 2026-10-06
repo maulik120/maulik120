@@ -79,3 +79,7 @@ Chained the lows that were still open. Nothing paid. The closest primitive is th
 ## Fourth pass
 
 Applied the source-audit half of the public hunter-stack list on `v0.12.1`. Duplicate side txs that both vote yes do not double-mint and do not halt PreBlocker: the second post-handler sees the first write and its error is swallowed. `amqp091-go v1.10.0` matches CVE-2026-79921 and CVE-2026-77410, which need a malicious broker the operator already trusts. Unmodified upstream. Not filed. Live scanners and jailbreak repos from that list were not run.
+
+## Fifth pass
+
+The skill-vault list's bounty package is `shuvonsec/claude-bug-bounty`. Its web2 scanners were not aimed at Polygon. The ten contract classes and the sibling-function rule were applied on `v0.12.1`. The real sibling gap is that `PostHandleMsgCheckpoint` still buffers a checkpoint after `MsgCheckpoint` rejects it at deliver time. The buffered account root is the one from the yes vote. Dividends only grow, so that root is smaller, not an extra claim. The Bor root still had to match. No second mint: a failed post-handler does not commit its cache. Do not send.
