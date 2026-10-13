@@ -55,3 +55,22 @@
 - `txnNotFound` without `searched_all` — indeterminate, not expiry
 - Foreign `account_info` / `tx` hash mismatch — fail closed
 - Deposit memo on XRP NI — filtered at offer + refuse at send
+- **AUT Cross-principal forge** — `create`/`update`/`delete` keyed by `msg_caller()` only (`api/active_user_transactions.rs:30–76`); no controller path. Remote attacker cannot touch another principal's rows.
+- **AUT Honest FE false-expiry (unpoisoned refs)** — `searched_all` + range/hash echo bind + validated-index recheck. Attack-meta prior kill stands for the *poller* given honest refs.
+- **AUT Accidental FE dismiss of Pending** — UI gates dismiss to terminal only (`ActiveUserTransactionItem.svelte:195` `action={isFailed || isSucceeded ? closeAction : undefined}`). Backend `delete` remains open (Chain B).
+- **AUT Non-user loader forge of terminal XRP** — `LoaderActiveUserTransactions` only drives `pollXrpActiveUserTransactions` for in-flight rows; NI poller explicitly skips `isXrpPaymentInFlight` (`Loader…:108–110`). `applyXrpStatus` attaches `ledger_result` refs **only** for NearIntents (`xrp-active-tx.services.ts:216–219`). No other service calls `update`/`delete` on plain `Xrp` rows. Terminal forge requires a same-principal `update`/`delete` (API, XSS, malicious client), not the honest poller inventing status without a lookup.
+
+## AUT lock-bypass deep-dive (2026-10-13)
+
+Known asymmetry confirmed: `leaves_pending_xrp_deposit` + `require_ledger_resolution` are NearIntents-only (`model.rs:673–681`, `:125–132`). Plain `Xrp` may go Pending→Failed/Succeeded with no `ledger_result`. `delete` is unrestricted. `update` replaces `external_refs` wholesale after shape-only `require_xrp_refs`.
+
+| Chain | Verdict | Impact | Sev (HP High-max) |
+| --- | --- | --- | --- |
+| **A** Plain Xrp Pending→Failed/Succeeded w/o ledger_result → second create Allowed | **PROVEN** (unit test `xrp_second_send_allowed_once_the_first_is_terminal`; intentional per `ledger_result_is_required_of_xrp_source_swaps_only`) | Same-principal unlock while payment may still apply | **Low** (ICPBB-120 class) |
+| **B** delete(Pending Xrp) → second create Allowed | **PROVEN** (`xrp_delete_pending_unlocks_second_create`). FE dismiss gated; canister is not. | Same-principal | **Low** |
+| **C** update Pending `last_ledger_sequence`→`1` → poller false-expires → Failed → second send | **PROVEN backend half** (`xrp_update_can_poison_last_ledger_sequence_while_pending`; NI variant `xrp_swap_poisoned_lls_then_expired_unlocks_create`). Poller trusts stored LLS (`xrp-active-tx.services.ts:59–64`, `:105–155`). | Same-principal; needs deliberate ref rewrite then honest poller | **Low** (defense-in-depth gap; no remote) |
+| **D** Cross-tab/device status/ref races | **Mostly held.** Dual create: FE gate TOCTOU, backend `AlreadyInFlight` atomic (`model.rs:66–68`). Dual poller terminal writes: terminal transitions idempotent. Cross-device: Device A forges Failed → Device B retries — same as A (same principal). | Same-principal only | Not a separate High |
+
+**Why not High:** Caller-bound; XRPL sequence still prevents two applied payments for the same `Sequence`. Closest paid class is ICPBB-120 (BTC pending prune bypass) = **Low** — self-affecting reservation-guard bypass. A High would need a non-caller path that forges terminal status or poisons refs.
+
+**Residual hardening (not a bounty win alone):** require `ledger_result` for plain `Xrp` leaving Pending (mirror NI); reject `delete` while `holds_xrp_address`; freeze `tx_hash` / `last_ledger_sequence` after create (updates may only *add* `ledger_result`).

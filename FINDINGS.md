@@ -106,3 +106,45 @@ Decode X-address → classic + tag in send/contacts; store tag with contact.
 | Tag inheritance across recipients | Closed when DESTINATION step runs (`sendDestination` sync) |
 | Signing key ≠ account | Closed — derive-and-compare before sign |
 | Known-dest inbound poison | Closed — known dests are outbound sends only |
+| AUT lock forge (A/B/C/D) | **Same-principal only** — see below; not High |
+
+---
+
+## XRP-AUT — Low (do not file as High) — Same-principal in-flight lock bypass
+
+### Verdict
+
+Chains **A/B/C are real** against the caller's own AUT rows. **No remote / cross-principal path.** Matches HackenProof **ICPBB-120** class (BTC pending-tx prune bypass → **Low**): self-affecting reservation-guard bypass; XRPL `Sequence` still prevents two applied payments for one nonce.
+
+### Asymmetry (root)
+
+```673:681:oisy-wallet/src/backend/src/active_user_transactions/model.rs
+fn leaves_pending_xrp_deposit(...) -> bool {
+    matches!(current.data, ActiveUserTransactionData::NearIntents(_))
+        && xrp_payment_source(&current.data).is_some()
+        && current.status == Pending
+        && *to != Pending
+}
+```
+
+Plain `Xrp` skips `require_ledger_resolution`. `delete` has no status gate (`model.rs:154–161`). `update` replaces `external_refs` after shape-only `require_xrp_refs` (`:107–116`, `:631–668` — `last_ledger_sequence` may be `"1"`).
+
+### Frontend
+
+- `applyXrpStatus` attaches `ledger_result` refs **only** for NearIntents (`xrp-active-tx.services.ts:216–219`).
+- Dismiss UI: terminal only (`ActiveUserTransactionItem.svelte:195`).
+- Loader: NI poller skips in-flight XRP deposits (`LoaderActiveUserTransactions.svelte:108–110`); no non-user path forges terminal plain-Xrp status.
+
+### Proof
+
+```bash
+cd oisy-wallet && cargo test -p backend --lib -- \
+  xrp_second_send_allowed_once_the_first_is_terminal \
+  xrp_delete_pending_unlocks_second_create \
+  xrp_update_can_poison_last_ledger_sequence_while_pending \
+  xrp_swap_poisoned_lls_then_expired_unlocks_create
+```
+
+### Recommended severity
+
+**Low** / Informational for HackenProof High-max. Do not escalate unless a non-caller write path appears.
