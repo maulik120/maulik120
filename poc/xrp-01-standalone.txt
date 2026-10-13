@@ -1,0 +1,5 @@
+XRP-01 standalone:
+  send-path destination would be: xrpl:rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY?dt=12345&amount=10
+  URN helper destination: rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY
+  URN helper dt: 12345
+  classic valid alone: true; with URI as dest: invalid

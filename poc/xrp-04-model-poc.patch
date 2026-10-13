@@ -1,0 +1,116 @@
+diff --git a/src/backend/src/active_user_transactions/model.rs b/src/backend/src/active_user_transactions/model.rs
+index 0a3c84b6..ac6bd4be 100644
+--- a/src/backend/src/active_user_transactions/model.rs
++++ b/src/backend/src/active_user_transactions/model.rs
+@@ -2340,6 +2340,111 @@ mod tests {
+         set_status(&mut map, "swap-evm", ActiveUserTransactionStatus::Executing);
+     }
+ 
++
++
++    /// Same-principal: delete clears a Pending plain Xrp hold (UI dismiss is terminal-only).
++    #[test]
++    fn xrp_delete_pending_unlocks_second_create() {
++        let (mut map, _mm) = setup();
++        create_xrp_send(&mut map, "xrp-1", XRP_SOURCE);
++
++        delete(&mut map, principal(), "xrp-1".to_string()).expect("delete");
++        assert!(list(&map, principal()).transactions.is_empty());
++
++        create_xrp_send(&mut map, "xrp-2", XRP_SOURCE);
++        assert_eq!(list(&map, principal()).transactions.len(), 1);
++        assert_eq!(
++            list(&map, principal()).transactions[0].status,
++            ActiveUserTransactionStatus::Pending
++        );
++    }
++
++    /// Same-principal: Pending plain Xrp `last_ledger_sequence` may be rewritten to any
++    /// positive UInt32 — poller trusts the stored value for expiry.
++    #[test]
++    fn xrp_update_can_poison_last_ledger_sequence_while_pending() {
++        let (mut map, _mm) = setup();
++        create_xrp_send(&mut map, "xrp-1", XRP_SOURCE);
++
++        update(
++            &mut map,
++            principal(),
++            UpdateActiveUserTransactionRequest {
++                id: "xrp-1".to_string(),
++                status: None,
++                progress_step: None,
++                external_refs: Some(xrp_refs_with(XRP_REF_LAST_LEDGER_SEQUENCE, "1")),
++                error: None,
++            },
++            2,
++        )
++        .expect("rewrite LLS while Pending");
++
++        let refs = &list(&map, principal()).transactions[0].external_refs;
++        let lls = refs
++            .iter()
++            .find(|r| r.key == XRP_REF_LAST_LEDGER_SEQUENCE)
++            .map(|r| r.value.as_str());
++        assert_eq!(lls, Some("1"));
++        assert_eq!(
++            list(&map, principal()).transactions[0].status,
++            ActiveUserTransactionStatus::Pending
++        );
++    }
++
++    /// Same-principal: poison NI swap LLS, then status-only Failed is still refused
++    /// without ledger_result — but after a matching expired ledger_result, create opens.
++    #[test]
++    fn xrp_swap_poisoned_lls_then_expired_unlocks_create() {
++        let (mut map, _mm) = setup();
++        create_xrp_swap(&mut map, "swap-1", XRP_SOURCE).expect("swap");
++
++        update(
++            &mut map,
++            principal(),
++            UpdateActiveUserTransactionRequest {
++                id: "swap-1".to_string(),
++                status: None,
++                progress_step: None,
++                external_refs: Some(xrp_refs_with(XRP_REF_LAST_LEDGER_SEQUENCE, "1")),
++                error: None,
++            },
++            2,
++        )
++        .expect("poison LLS");
++
++        // Still cannot leave Pending without ledger_result (NI gate holds).
++        let err = update(
++            &mut map,
++            principal(),
++            UpdateActiveUserTransactionRequest {
++                id: "swap-1".to_string(),
++                status: Some(ActiveUserTransactionStatus::Failed),
++                progress_step: None,
++                external_refs: None,
++                error: None,
++            },
++            3,
++        )
++        .unwrap_err();
++        assert_eq!(
++            err,
++            ActiveUserTransactionError::InvalidData(
++                "ledger_result is required to leave Pending".to_string()
++            )
++        );
++
++        resolve_xrp_swap(
++            &mut map,
++            "swap-1",
++            ActiveUserTransactionStatus::Failed,
++            "expired",
++        )
++        .expect("expire with ledger_result");
++
++        create_xrp_send(&mut map, "xrp-1", XRP_SOURCE);
++    }
++
+     #[test]
+     fn xrp_swap_deposit_does_not_block_another_address() {
+         let (mut map, _mm) = setup();

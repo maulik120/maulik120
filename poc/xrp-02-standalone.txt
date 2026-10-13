@@ -1,0 +1,4 @@
+XRP-02 standalone:
+  amountOut 1000000000000000001
+  mangled   1000000000000000000
+  delta     1
