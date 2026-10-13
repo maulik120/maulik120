@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /workspace/oisy-wallet
+
+
+ Test Files  2 passed (2)
+      Tests  7 passed (7)
+   Start at  04:07:46
+   Duration  3.73s (transform 2.81s, setup 2.86s, import 1.82s, tests 43ms, environment 836ms)
+
