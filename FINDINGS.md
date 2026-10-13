@@ -106,45 +106,57 @@ Decode X-address → classic + tag in send/contacts; store tag with contact.
 | Tag inheritance across recipients | Closed when DESTINATION step runs (`sendDestination` sync) |
 | Signing key ≠ account | Closed — derive-and-compare before sign |
 | Known-dest inbound poison | Closed — known dests are outbound sends only |
-| AUT lock forge (A/B/C/D) | **Same-principal only** — see below; not High |
+| AUT lock forge (A/B/C/D) | Same-principal only — **Low** (not Critical/High) |
+| NI send amount vs signed `amountIn` | Info — missing bind; 1Click refunds excess/under |
+| Quote substitution at send | Same-principal store write; quote-time echo holds |
 
 ---
 
-## XRP-AUT — Low (do not file as High) — Same-principal in-flight lock bypass
+## Deep-hunt verdict — no novel Critical on tip `2918274a`
+
+Out-of-the-box Critical candidates (AUT forge, LLS poison→false-expiry, NI amountIn unbound, quote swap at send, Schnorr bind) were proven or killed. **None are Critical:** remote/cross-principal money theft not shown. Best paid XRP finding remains **XRP-01 High**.
+
+---
+
+## XRP-AUT — Low — Same-principal in-flight lock bypass
 
 ### Verdict
 
-Chains **A/B/C are real** against the caller's own AUT rows. **No remote / cross-principal path.** Matches HackenProof **ICPBB-120** class (BTC pending-tx prune bypass → **Low**): self-affecting reservation-guard bypass; XRPL `Sequence` still prevents two applied payments for one nonce.
+Chains **A/B/C are real** against the caller's own AUT rows. **No remote / cross-principal path.** Matches HackenProof **ICPBB-120** (BTC pending-tx prune → **Low**). XRPL `Sequence` still blocks two applied payments for one nonce; forged terminal/delete unlocks a *second* sequence.
 
 ### Asymmetry (root)
 
-```673:681:oisy-wallet/src/backend/src/active_user_transactions/model.rs
-fn leaves_pending_xrp_deposit(...) -> bool {
-    matches!(current.data, ActiveUserTransactionData::NearIntents(_))
-        && xrp_payment_source(&current.data).is_some()
-        && current.status == Pending
-        && *to != Pending
-}
-```
+`leaves_pending_xrp_deposit` is NearIntents-only (`model.rs:673–681`). Plain `Xrp` skips `require_ledger_resolution`. `delete` has no status gate. `update` may set `last_ledger_sequence` to `"1"`. Intentional per `ledger_result_is_required_of_xrp_source_swaps_only`.
 
-Plain `Xrp` skips `require_ledger_resolution`. `delete` has no status gate (`model.rs:154–161`). `update` replaces `external_refs` after shape-only `require_xrp_refs` (`:107–116`, `:631–668` — `last_ledger_sequence` may be `"1"`).
+### Frontend half
 
-### Frontend
-
-- `applyXrpStatus` attaches `ledger_result` refs **only** for NearIntents (`xrp-active-tx.services.ts:216–219`).
-- Dismiss UI: terminal only (`ActiveUserTransactionItem.svelte:195`).
-- Loader: NI poller skips in-flight XRP deposits (`LoaderActiveUserTransactions.svelte:108–110`); no non-user path forges terminal plain-Xrp status.
+Poller trusts stored LLS; poisoned `"1"` → wrong window → i18n *"safe to send again"*. `applyXrpStatus` writes `ledger_result` refs only for NearIntents. UI dismiss is terminal-only; canister `delete` is not.
 
 ### Proof
 
 ```bash
+# apply poc/xrp-04-model-poc.patch inside oisy-wallet, then:
 cd oisy-wallet && cargo test -p backend --lib -- \
   xrp_second_send_allowed_once_the_first_is_terminal \
   xrp_delete_pending_unlocks_second_create \
   xrp_update_can_poison_last_ledger_sequence_while_pending \
   xrp_swap_poisoned_lls_then_expired_unlocks_create
+
+npx vitest run --config vitest.config.ts \
+  src/frontend/src/tests/xrp/poc/xrp-04-aut-forged-terminal.spec.ts
 ```
 
-### Recommended severity
+### Severity
 
-**Low** / Informational for HackenProof High-max. Do not escalate unless a non-caller write path appears.
+**Low** / Informational. Escalate only if a non-caller write path appears.
+
+---
+
+## XRP-05 — Informational — NI deposit amount not rebound to signed `amountIn`
+
+`executeNearIntentsSwap` verifies the quote signature and uses `depositAddress` from the quote, but sends `parseToken(swapAmount)` with no `=== BigInt(quote.amountIn)` check. 1Click EXACT_INPUT refunds under/over to signed `refundTo` (user) — **no attacker profit** on the honest path.
+
+```bash
+npx vitest run --config vitest.config.ts \
+  src/frontend/src/tests/xrp/poc/xrp-05-amountin-unbound.spec.ts
+```

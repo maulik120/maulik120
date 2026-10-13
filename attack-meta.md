@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | 1 | Keys / Schnorr Ed25519 derivation + account binding | Killed — path caller-bound, SigningPubKey must derive `Account` |
 | 1 | Signer UI ≠ payload (send review) | Review shows full destination; tag shown from same store signed |
-| 1 | NEAR Intents deposit (Coreum–XRPL memo class) | Partially killed — quotes with `depositMemo` refused (v2.6.2); residual: send amount not rebound to signed `amountIn` |
+| 1 | NEAR Intents deposit (Coreum–XRPL memo class) | Memo killed (v2.6.2); **amountIn unbound** proven (XRP-05 Info — refund semantics, no attacker $) |
 | 2 | Destination tag / X-address / payment URI | **OPEN** — QR path drops tags; classic-only; advisory warning only |
 | 2 | False expiry → duplicate send | Killed — `searched_all` + hash/range bind + recheck |
 | 2 | Fee TOCTOU review→sign | Bounded (≤10_000 drops); observe freeze on SENDING |
@@ -22,7 +22,7 @@
 ## Invariants (hold / break)
 
 1. Signing key ↔ classic address agreement — **holds** (`getXrpSigningPublicKey`)
-2. One open XRP payment per address — **holds** (backend AUT + frontend gate)
+2. One open XRP payment per address — **holds vs honest FE / cross-principal**; **soft vs same-principal** `update`/`delete` (plain Xrp needs no `ledger_result`; see AUT Low)
 3. Untagged send to `lsfRequireDestTag` refused — **holds**
 4. Shown destination tag = signed `DestinationTag` — **holds** when tag entered in form
 5. Payment URI / X-address tag reaches signed tx — **BROKEN** (never extracted)
@@ -73,4 +73,20 @@ Known asymmetry confirmed: `leaves_pending_xrp_deposit` + `require_ledger_resolu
 
 **Why not High:** Caller-bound; XRPL sequence still prevents two applied payments for the same `Sequence`. Closest paid class is ICPBB-120 (BTC pending prune bypass) = **Low** — self-affecting reservation-guard bypass. A High would need a non-caller path that forges terminal status or poisons refs.
 
-**Residual hardening (not a bounty win alone):** require `ledger_result` for plain `Xrp` leaving Pending (mirror NI); reject `delete` while `holds_xrp_address`; freeze `tx_hash` / `last_ledger_sequence` after create (updates may only *add* `ledger_result`).
+**Residual hardening (not a bounty win alone):** require `ledger_result` for plain `Xrp` leaving Pending (mirror NI); reject `delete` while `holds_xrp_address`; freeze `tx_hash` / `last_ledger_sequence` after create (updates may only *add* `ledger_result`); bind NI send amount to `quote.amountIn`.
+
+## Novel-Critical hunt close-out (2026-10-13)
+
+Brainstormed + instantiated: false expiry, AUT leave-Pending asymmetry, LLS poison→poller, delete(Pending), NI amountIn unbound, quote substitution at send, Schnorr Account bind, depositMemo, tag QR, X-address, fee TOCTOU, sequence race.
+
+| Candidate | Result |
+| --- | --- |
+| AUT A/B/C forged terminal / delete / LLS | **PROVEN** same-principal → **Low** (ICPBB-120) |
+| Honest poller false-expiry (unpoisoned) | **Killed** — searched_all + recheck |
+| Cross-principal AUT | **Killed** — `msg_caller()` keyed |
+| NI amountIn ≠ send amount | **PROVEN** missing check → **Info** (1Click refunds; refundTo=user) |
+| Quote sig-only at send (no echo recheck) | Needs same-principal store rewrite; quote-time echo holds |
+| SigningPubKey ≠ Account | **Killed** — derive-and-compare |
+| **Unique Critical** | **Not found** on tip `2918274a` |
+
+Best paid surface remains **XRP-01 High** (destination tag / QR).

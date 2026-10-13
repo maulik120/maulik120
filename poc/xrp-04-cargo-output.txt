@@ -1,11 +1,12 @@
    Compiling backend v0.0.3 (/workspace/oisy-wallet/src/backend)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.20s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.00s
      Running unittests src/lib.rs (target/debug/deps/backend-e25505bd75d78a14)
 
-running 3 tests
-test active_user_transactions::model::tests::poc_xrp04_delete_pending_send_unlocks_second_create ... ok
-test active_user_transactions::model::tests::poc_xrp04_pending_send_can_rewrite_last_ledger_sequence_early ... ok
-test active_user_transactions::model::tests::poc_xrp04_plain_send_forged_failed_unlocks_second_create ... ok
+running 4 tests
+test active_user_transactions::model::tests::xrp_delete_pending_unlocks_second_create ... ok
+test active_user_transactions::model::tests::xrp_swap_poisoned_lls_then_expired_unlocks_create ... ok
+test active_user_transactions::model::tests::xrp_update_can_poison_last_ledger_sequence_while_pending ... ok
+test active_user_transactions::model::tests::xrp_second_send_allowed_once_the_first_is_terminal ... ok
 
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 341 filtered out; finished in 0.06s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 337 filtered out; finished in 0.06s
 
