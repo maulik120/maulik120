@@ -1,9 +1,10 @@
 # Oisy Wallet XRP — Attack Meta
 
-**Target:** https://github.com/dfinity/oisy-wallet (latest `main` @ `2918274a`, XRP shipped v2.6.0–v2.6.2)  
+**Target:** https://github.com/dfinity/oisy-wallet  
+**Tip:** `2918274a65216bae1d6904ace7124f563b0a3aba` (`origin/main`, re-verified 2026-10-13)  
+**XRP shipped:** v2.6.0–v2.6.2  
 **Program:** HackenProof ICP — Oisy in-scope, High max  
-**Prior audit:** Trail of Bits Sep 2025 — **before** native XRP; no XRP coverage  
-**Date:** 2026-10-13
+**Prior audit:** Trail of Bits Sep 2025 — **before** native XRP; no XRP coverage
 
 ## Money path ranking
 

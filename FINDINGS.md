@@ -1,8 +1,10 @@
 # Oisy Wallet — XRP findings (latest main)
 
-**Repo:** `dfinity/oisy-wallet` @ `2918274a` (post v2.6.2 XRP)  
+**Repo:** `dfinity/oisy-wallet`  
+**Tip verified:** `2918274a65216bae1d6904ace7124f563b0a3aba` (`origin/main`, 2026-10-13)  
 **Scope:** HackenProof ICP / Oisy  
-**ToB Sep 2025:** no XRP (feature shipped Oct 2026)
+**ToB Sep 2025:** no XRP (feature shipped Oct 2026)  
+**Re-check:** all three issues still present on tip; PoCs `7/7` green
 
 ---
 
